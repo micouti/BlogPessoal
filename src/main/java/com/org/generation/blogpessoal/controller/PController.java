@@ -23,6 +23,8 @@ public class PController {
 	@GetMapping
 	public ResponseEntity<List<Postagem>> GetAll(){
 		return ResponseEntity.ok(myrepository.findAll());
+		
 	}
+	
 	
 }
