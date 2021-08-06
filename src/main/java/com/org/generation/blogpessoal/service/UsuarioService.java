@@ -1,13 +1,16 @@
 package com.org.generation.blogpessoal.service;
 
 import java.nio.charset.Charset;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.Optional;
 
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-
+import org.springframework.web.server.ResponseStatusException;
 
 import com.org.generation.blogpessoal.model.UserLogin;
 import com.org.generation.blogpessoal.model.Usuario;
@@ -19,13 +22,41 @@ public class UsuarioService {
 	@Autowired
 	private UsuarioRepository usuarioRepository;
 	
-	public Usuario CadastrarUsuario(Usuario usuario) {
+	public Optional <Usuario> CadastrarUsuario(Usuario usuario) {
+		int idade = Period.between(usuario.getDataNascimento(), LocalDate.now()).getYears();
+		
+		if (idade<18)
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário é menor de idade!");
+		
 		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 		
 		String senhaEncoder = encoder.encode(usuario.getSenha());
 		usuario.setSenha(senhaEncoder);
 		
-		return usuarioRepository.save(usuario);
+		return Optional.of(usuarioRepository.save(usuario));
+	}
+	
+	public Optional <Usuario> atualizarUsuario(Usuario usuario){
+		
+		if (usuarioRepository.findByUsuario(usuario.getUsuario()).isPresent()) {
+		
+		int idade = Period.between(usuario.getDataNascimento(), LocalDate.now()).getYears();
+		
+		if (idade<18)
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário é menor de idade!");
+		
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		
+		String senhaEncoder = encoder.encode(usuario.getSenha());
+		
+		usuario.setSenha(senhaEncoder);
+		
+		return Optional.of(usuarioRepository.save(usuario));
+		
+	}else {
+		
+		throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado!", null); 
+		}
 	}
 	
 	public Optional<UserLogin> Logar(Optional<UserLogin> usuarioLogin) {
@@ -41,13 +72,15 @@ public class UsuarioService {
 				String authHeader = "Basic " + new String(encodedAuth);
 				
 				
-				usuarioLogin.get().setToken(authHeader);
+				usuarioLogin.get().setId(usuario.get().getId());
 				usuarioLogin.get().setNome(usuario.get().getNome());
+				usuarioLogin.get().setSenha(usuario.get().getSenha());
+				usuarioLogin.get().setToken(authHeader);
 				
 				return usuarioLogin;
 			}
 		}
-		return null;
+		throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autorizado!", null);
 	}
 		
 } 
